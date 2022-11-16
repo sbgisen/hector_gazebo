@@ -56,6 +56,7 @@ GazeboRosIMU::~GazeboRosIMU()
   dynamic_reconfigure_server_accel_.reset();
   dynamic_reconfigure_server_rate_.reset();
   dynamic_reconfigure_server_yaw_.reset();
+  dynamic_reconfigure_server_cov_.reset();
 
   node_handle_->shutdown();
 #ifdef USE_CBQ
@@ -207,9 +208,11 @@ void GazeboRosIMU::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     dynamic_reconfigure_server_accel_.reset(new dynamic_reconfigure::Server<SensorModelConfig>(ros::NodeHandle(*node_handle_, topic_ + "/accel")));
     dynamic_reconfigure_server_rate_.reset(new dynamic_reconfigure::Server<SensorModelConfig>(ros::NodeHandle(*node_handle_, topic_ + "/rate")));
     dynamic_reconfigure_server_yaw_.reset(new dynamic_reconfigure::Server<SensorModelConfig>(ros::NodeHandle(*node_handle_, topic_ + "/yaw")));
+    dynamic_reconfigure_server_cov_.reset(new dynamic_reconfigure::Server<hector_gazebo_plugins::ConstantCovarianceConfig>(ros::NodeHandle(*node_handle_, topic_ + "/cov")));
     dynamic_reconfigure_server_accel_->setCallback(boost::bind(&SensorModel3::dynamicReconfigureCallback, &accelModel, _1, _2));
     dynamic_reconfigure_server_rate_->setCallback(boost::bind(&SensorModel3::dynamicReconfigureCallback, &rateModel, _1, _2));
     dynamic_reconfigure_server_yaw_->setCallback(boost::bind(&SensorModel::dynamicReconfigureCallback, &yawModel, _1, _2));
+    dynamic_reconfigure_server_cov_->setCallback(boost::bind(&GazeboRosIMU::reconfigCovCallback, this, _1, _2));
   }
 
 #ifdef USE_CBQ
@@ -239,6 +242,19 @@ void GazeboRosIMU::Reset()
   accelModel.reset();
   rateModel.reset();
   yawModel.reset();
+}
+
+void GazeboRosIMU::reconfigCovCallback(hector_gazebo_plugins::ConstantCovarianceConfig &config, uint32_t level)
+{
+  cov_x_ = config.cov_orientation_roll;
+  cov_y_ = config.cov_orientation_pitch;
+  cov_z_ = config.cov_orientation_yaw;
+  cov_vel_x_ = config.cov_angular_vel_x;
+  cov_vel_y_ = config.cov_angular_vel_y;
+  cov_vel_z_ = config.cov_angular_vel_z;
+  cov_acc_x_ = config.cov_linear_acc_x;
+  cov_acc_y_ = config.cov_linear_acc_y;
+  cov_acc_z_ = config.cov_linear_acc_z;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -440,6 +456,25 @@ void GazeboRosIMU::Update()
     imuMsg.orientation_covariance[0] = -1;
     imuMsg.orientation_covariance[4] = -1;
   }
+
+  if(cov_x_)
+    imuMsg.orientation_covariance[0] = cov_x_;
+  if(cov_y_)
+    imuMsg.orientation_covariance[4] = cov_y_;
+  if(cov_z_)
+    imuMsg.orientation_covariance[8] = cov_z_;
+  if(cov_vel_x_)
+    imuMsg.angular_velocity_covariance[0] = cov_vel_x_;
+  if(cov_vel_y_)
+    imuMsg.angular_velocity_covariance[4] = cov_vel_y_;
+  if(cov_vel_z_)
+    imuMsg.angular_velocity_covariance[8] = cov_vel_z_;
+  if(cov_acc_x_)
+    imuMsg.linear_acceleration_covariance[0] = cov_acc_x_;
+  if(cov_acc_y_)
+    imuMsg.linear_acceleration_covariance[4] = cov_acc_y_;
+  if(cov_acc_z_)
+    imuMsg.linear_acceleration_covariance[8] = cov_acc_z_;
 
   // publish to ros
   pub_.publish(imuMsg);

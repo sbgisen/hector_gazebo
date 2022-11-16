@@ -46,6 +46,7 @@
 #include <hector_gazebo_plugins/update_timer.h>
 
 #include <dynamic_reconfigure/server.h>
+#include <hector_gazebo_plugins/ConstantCovarianceConfig.h>
 
 namespace gazebo
 {
@@ -147,6 +148,18 @@ namespace gazebo
       event::ConnectionPtr updateConnection;
 
       boost::shared_ptr<dynamic_reconfigure::Server<SensorModelConfig> > dynamic_reconfigure_server_accel_, dynamic_reconfigure_server_rate_, dynamic_reconfigure_server_yaw_;
+
+      boost::shared_ptr<dynamic_reconfigure::Server<hector_gazebo_plugins::ConstantCovarianceConfig> > dynamic_reconfigure_server_cov_;
+      void reconfigCovCallback(hector_gazebo_plugins::ConstantCovarianceConfig &config, uint32_t level);
+      double cov_x_;
+      double cov_y_;
+      double cov_z_;
+      double cov_vel_x_;
+      double cov_vel_y_;
+      double cov_vel_z_;
+      double cov_acc_x_;
+      double cov_acc_y_;
+      double cov_acc_z_;
    };
 }
 
